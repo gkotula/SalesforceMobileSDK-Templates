@@ -17,7 +17,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.salesforce.mobilesyncexplorerkotlintemplate.R.drawable.ic_undo
 import com.salesforce.mobilesyncexplorerkotlintemplate.R.string.*
-import com.salesforce.mobilesyncexplorerkotlintemplate.contacts.detailscomponent.ContactDetailsClickHandler
 import com.salesforce.mobilesyncexplorerkotlintemplate.contacts.detailscomponent.ContactDetailsUiState
 import com.salesforce.mobilesyncexplorerkotlintemplate.core.salesforceobject.LocalStatus
 import com.salesforce.mobilesyncexplorerkotlintemplate.core.ui.state.SObjectUiSyncState
@@ -27,16 +26,13 @@ import com.salesforce.mobilesyncexplorerkotlintemplate.model.contacts.ContactObj
 import com.salesforce.mobilesyncexplorerkotlintemplate.model.contacts.ContactRecord
 
 @Composable
-fun RowScope.ContactDetailsTopBarContentExpanded(
-    detailsUiState: ContactDetailsUiState,
-    eventHandler: ContactDetailsClickHandler
-) {
+fun RowScope.ContactDetailsTopBarContentExpanded(uiState: ContactDetailsUiState) {
     Spacer(modifier = Modifier.weight(1f))
-    when (detailsUiState) {
+    when (uiState) {
         is ContactDetailsUiState.NoContactSelected -> {}
         is ContactDetailsUiState.ViewingContactDetails -> {
-            if (detailsUiState.uiSyncState != SObjectUiSyncState.Deleted) {
-                IconButton(onClick = eventHandler::deleteClick) {
+            if (uiState.uiSyncState != SObjectUiSyncState.Deleted) {
+                IconButton(onClick = uiState.detailsClickHandler::deleteClick) {
                     Icon(
                         Icons.Default.Delete,
                         contentDescription = stringResource(id = cta_delete)
@@ -44,16 +40,16 @@ fun RowScope.ContactDetailsTopBarContentExpanded(
                 }
             }
             when {
-                detailsUiState.uiSyncState == SObjectUiSyncState.Deleted -> {
-                    IconButton(onClick = eventHandler::undeleteClick) {
+                uiState.uiSyncState == SObjectUiSyncState.Deleted -> {
+                    IconButton(onClick = uiState.detailsClickHandler::undeleteClick) {
                         Icon(
                             painter = painterResource(id = ic_undo),
                             contentDescription = stringResource(id = cta_undelete)
                         )
                     }
                 }
-                detailsUiState.isEditingEnabled -> {
-                    IconButton(onClick = eventHandler::saveClick) {
+                uiState.isEditingEnabled -> {
+                    IconButton(onClick = uiState.detailsClickHandler::saveClick) {
                         Icon(
                             Icons.Default.Check,
                             contentDescription = stringResource(id = cta_save)
@@ -61,7 +57,7 @@ fun RowScope.ContactDetailsTopBarContentExpanded(
                     }
                 }
                 else -> {
-                    IconButton(onClick = eventHandler::editClick) {
+                    IconButton(onClick = uiState.detailsClickHandler::editClick) {
                         Icon(
                             Icons.Default.Edit,
                             contentDescription = stringResource(id = cta_edit)
@@ -93,7 +89,7 @@ private fun ContactDetailsTopBarExpandedPreview() {
                 TopAppBar(modifier = Modifier.padding(8.dp)) {
                     Text("Other Top App Bar Content")
                     ContactDetailsTopBarContentExpanded(
-                        detailsUiState = mockContact.toPreviewViewingContactDetails(),
+                        uiState = mockContact.toPreviewViewingContactDetails(),
                         eventHandler = PREVIEW_CONTACT_DETAILS_UI_HANDLER
                     )
                 }
@@ -102,7 +98,7 @@ private fun ContactDetailsTopBarExpandedPreview() {
                 TopAppBar(modifier = Modifier.padding(8.dp)) {
                     Text("Other Top App Bar Content")
                     ContactDetailsTopBarContentExpanded(
-                        detailsUiState = mockContact.toPreviewViewingContactDetails(
+                        uiState = mockContact.toPreviewViewingContactDetails(
                             isEditingEnabled = true
                         ),
                         eventHandler = PREVIEW_CONTACT_DETAILS_UI_HANDLER
@@ -113,7 +109,7 @@ private fun ContactDetailsTopBarExpandedPreview() {
                 TopAppBar(modifier = Modifier.padding(8.dp)) {
                     Text("Other Top App Bar Content")
                     ContactDetailsTopBarContentExpanded(
-                        detailsUiState = mockContact.toPreviewViewingContactDetails(
+                        uiState = mockContact.toPreviewViewingContactDetails(
                             uiSyncState = SObjectUiSyncState.Deleted
                         ),
                         eventHandler = PREVIEW_CONTACT_DETAILS_UI_HANDLER
@@ -124,7 +120,7 @@ private fun ContactDetailsTopBarExpandedPreview() {
                 TopAppBar(modifier = Modifier.padding(8.dp)) {
                     Text("Other Top App Bar Content")
                     ContactDetailsTopBarContentExpanded(
-                        detailsUiState = ContactDetailsUiState.NoContactSelected(),
+                        uiState = ContactDetailsUiState.NoContactSelected(),
                         eventHandler = PREVIEW_CONTACT_DETAILS_UI_HANDLER
                     )
                 }

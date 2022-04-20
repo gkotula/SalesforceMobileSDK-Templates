@@ -28,6 +28,7 @@ package com.salesforce.mobilesyncexplorerkotlintemplate.contacts.activity
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.salesforce.androidsdk.accounts.UserAccount
 import com.salesforce.mobilesyncexplorerkotlintemplate.contacts.detailscomponent.*
 import com.salesforce.mobilesyncexplorerkotlintemplate.contacts.listcomponent.ContactsListClickHandler
 import com.salesforce.mobilesyncexplorerkotlintemplate.contacts.listcomponent.ContactsListUiState
@@ -37,10 +38,7 @@ import com.salesforce.mobilesyncexplorerkotlintemplate.core.repos.SyncDownExcept
 import com.salesforce.mobilesyncexplorerkotlintemplate.core.repos.SyncUpException
 import com.salesforce.mobilesyncexplorerkotlintemplate.core.salesforceobject.isLocallyDeleted
 import com.salesforce.mobilesyncexplorerkotlintemplate.core.ui.state.*
-import com.salesforce.mobilesyncexplorerkotlintemplate.model.contacts.ContactObject
-import com.salesforce.mobilesyncexplorerkotlintemplate.model.contacts.ContactRecord
-import com.salesforce.mobilesyncexplorerkotlintemplate.model.contacts.ContactValidationException
-import com.salesforce.mobilesyncexplorerkotlintemplate.model.contacts.ContactsRepo
+import com.salesforce.mobilesyncexplorerkotlintemplate.model.contacts.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -51,30 +49,11 @@ import kotlin.coroutines.suspendCoroutine
 
 interface ContactsActivityViewModel {
     val activityUiState: StateFlow<ContactsActivityUiState>
-    val detailsUiState: StateFlow<ContactDetailsUiState>
-    val listUiState: StateFlow<ContactsListUiState>
-
-    val detailsFieldChangeHandler: ContactDetailsFieldChangeHandler
-    val detailsClickHandler: ContactDetailsClickHandler
-    val listClickHandler: ContactsListClickHandler
-    val searchTermUpdatedHandler: (newSearchTerm: String) -> Unit
 
     fun fullSync()
 }
 
-class DefaultContactsActivityViewModel(
-    private val contactsRepo: ContactsRepo
-) : ViewModel(), ContactsActivityViewModel {
-
-    private val detailsVm by lazy { DefaultContactDetailsViewModel() }
-    private val listVm by lazy { DefaultContactsListViewModel() }
-
-    override val detailsUiState: StateFlow<ContactDetailsUiState> get() = detailsVm.uiState
-    override val listUiState: StateFlow<ContactsListUiState> get() = listVm.uiState
-    override val detailsClickHandler: ContactDetailsClickHandler get() = detailsVm
-    override val detailsFieldChangeHandler: ContactDetailsFieldChangeHandler get() = detailsVm
-    override val listClickHandler: ContactsListClickHandler get() = listVm
-    override val searchTermUpdatedHandler: (newSearchTerm: String) -> Unit get() = listVm::onSearchTermUpdated
+class DefaultContactsActivityViewModel : ViewModel(), ContactsActivityViewModel {
 
     /**
      * Acquire this lock and hold it for the entire time you are handling an event. Events are
@@ -85,17 +64,34 @@ class DefaultContactsActivityViewModel(
      */
     private val eventMutex = Mutex()
     private val mutActivityUiState = MutableStateFlow(
-        ContactsActivityUiState(isSyncing = false, dataOpIsActive = false, dialogUiState = null)
+        ContactsActivityUiState(
+            isSyncing = false,
+            dataOpIsActive = false,
+            dialogUiState = null,
+            detailsUiState = null,
+            listUiState = null
+        )
     )
 
     override val activityUiState: StateFlow<ContactsActivityUiState> get() = mutActivityUiState
 
     @Volatile
+    private var contactsRepo: ContactsRepo? = null
+
+    @Volatile
     private var curRecordsByIds: Map<String, ContactRecord> = emptyMap()
 
-    init {
-        viewModelScope.launch {
-            contactsRepo.recordsById.collect { records ->
+    @Volatile
+    private var repoCollectorJob: Job? = null
+
+    fun onUserSwitched(userAccount: UserAccount) = launchWithEventLock {
+        repoCollectorJob?.cancelAndJoin()
+
+        val newRepo = DefaultContactsRepo(account = userAccount)
+        contactsRepo = newRepo
+
+        repoCollectorJob = viewModelScope.launch {
+            newRepo.recordsById.collect { records ->
                 eventMutex.withLockDebug {
                     curRecordsByIds = records
                     detailsVm.onRecordsEmitted()

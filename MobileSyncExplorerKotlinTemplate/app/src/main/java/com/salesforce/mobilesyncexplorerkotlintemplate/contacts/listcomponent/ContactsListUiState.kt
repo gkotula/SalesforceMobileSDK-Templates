@@ -9,5 +9,7 @@ data class ContactsListUiState(
     val isDoingInitialLoad: Boolean,
     val isDoingDataAction: Boolean,
     val isSearchJobRunning: Boolean,
-    val curSearchTerm: String = ""
+    val curSearchTerm: String = "",
+    val listClickHandler: ContactsListClickHandler,
+    val onSearchTermUpdated: (newSearchTerm: String) -> Unit,
 )

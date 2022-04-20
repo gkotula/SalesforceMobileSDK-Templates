@@ -26,12 +26,17 @@
  */
 package com.salesforce.mobilesyncexplorerkotlintemplate.contacts.activity
 
+import com.salesforce.mobilesyncexplorerkotlintemplate.contacts.detailscomponent.ContactDetailsUiState
+import com.salesforce.mobilesyncexplorerkotlintemplate.contacts.listcomponent.ContactsListUiState
 import com.salesforce.mobilesyncexplorerkotlintemplate.core.ui.state.DialogUiState
 
 data class ContactsActivityUiState(
     val isSyncing: Boolean,
     val dataOpIsActive: Boolean,
     val dialogUiState: DialogUiState?,
+
+    val detailsUiState: ContactDetailsUiState?,
+    val listUiState: ContactsListUiState?,
 )
 
 interface ContactsActivityMenuHandler {

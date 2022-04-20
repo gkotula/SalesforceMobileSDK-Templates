@@ -57,8 +57,6 @@ fun ContactsListSinglePaneComponent(
     contentModifier: Modifier = Modifier,
     uiState: ContactsListUiState,
     showLoading: Boolean,
-    listClickHandler: ContactsListClickHandler,
-    onSearchTermUpdated: (newSearchTerm: String) -> Unit,
     menuHandler: ContactsActivityMenuHandler
 ) {
     Scaffold(
@@ -74,7 +72,9 @@ fun ContactsListSinglePaneComponent(
                 cutoutShape = MaterialTheme.shapes.small.copy(all = CornerSize(percent = 50))
             ) {}
         },
-        floatingActionButton = { ContactsListFabSinglePane(listCreateClick = listClickHandler::createClick) },
+        floatingActionButton = {
+            ContactsListFabSinglePane(listCreateClick = uiState.listClickHandler::createClick)
+        },
         floatingActionButtonPosition = FabPosition.Center,
         isFloatingActionButtonDocked = true,
     ) {
@@ -83,8 +83,6 @@ fun ContactsListSinglePaneComponent(
                 .padding(it)
                 .then(contentModifier),
             uiState = uiState,
-            listClickHandler = listClickHandler,
-            onSearchTermUpdated = onSearchTermUpdated
         )
 
         if (showLoading) {

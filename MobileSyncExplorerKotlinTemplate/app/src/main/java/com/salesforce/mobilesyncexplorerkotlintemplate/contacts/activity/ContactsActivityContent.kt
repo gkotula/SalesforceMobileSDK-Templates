@@ -74,43 +74,32 @@ fun ContactsActivityContent(
     menuHandler: ContactsActivityMenuHandler,
     windowSizeClasses: WindowSizeClasses
 ) {
-    val detailsUiState by activityVm.detailsUiState.collectAsState()
-    val listUiState by activityVm.listUiState.collectAsState()
-    val activityUiState by activityVm.activityUiState.collectAsState()
+    val uiState by activityVm.activityUiState.collectAsState()
 
     when (windowSizeClasses.toContactsActivityContentLayout()) {
         ContactsActivityContentLayout.SinglePane -> SinglePane(
-            activityUiState = activityUiState,
-            detailsUiState = detailsUiState,
-            detailsClickHandler = activityVm.detailsClickHandler,
-            listUiState = listUiState,
-            listClickHandler = activityVm.listClickHandler,
-            onSearchTermUpdated = activityVm.searchTermUpdatedHandler,
+            activityUiState = uiState,
+            detailsUiState = uiState.detailsUiState,
+            listUiState = uiState.listUiState,
             menuHandler = menuHandler
         )
         ContactsActivityContentLayout.ListDetail -> ListDetail(
-            activityUiState = activityUiState,
-            detailsUiState = detailsUiState,
-            detailsClickHandler = activityVm.detailsClickHandler,
-            listUiState = listUiState,
-            listClickHandler = activityVm.listClickHandler,
-            onSearchTermUpdated = activityVm.searchTermUpdatedHandler,
+            activityUiState = uiState,
+            detailsUiState = uiState.detailsUiState,
+            listUiState = uiState.listUiState,
             menuHandler = menuHandler,
             windowSizeClasses = windowSizeClasses
         )
     }
 
-    activityUiState.dialogUiState?.RenderDialog(modifier = Modifier)
+    uiState.dialogUiState?.RenderDialog(modifier = Modifier)
 }
 
 @Composable
 private fun SinglePane(
     activityUiState: ContactsActivityUiState,
-    detailsUiState: ContactDetailsUiState,
-    detailsClickHandler: ContactDetailsClickHandler,
-    listUiState: ContactsListUiState,
-    listClickHandler: ContactsListClickHandler,
-    onSearchTermUpdated: (newSearchTerm: String) -> Unit,
+    detailsUiState: ContactDetailsUiState?,
+    listUiState: ContactsListUiState?,
     menuHandler: ContactsActivityMenuHandler,
 ) {
     val showLoading = activityUiState.dataOpIsActive || activityUiState.isSyncing
@@ -120,27 +109,26 @@ private fun SinglePane(
         is ContactDetailsUiState.ViewingContactDetails -> ContactDetailsContentSinglePane(
             details = detailsUiState,
             showLoadingOverlay = showLoading,
-            componentClickHandler = detailsClickHandler,
+            componentClickHandler = detailsUiState.detailsClickHandler,
             menuHandler = menuHandler
         )
-        else -> ContactsListSinglePaneComponent(
-            uiState = listUiState,
-            showLoading = showLoading,
-            listClickHandler = listClickHandler,
-            onSearchTermUpdated = onSearchTermUpdated,
-            menuHandler = menuHandler
-        )
+        else -> {
+            if (listUiState != null) {
+                ContactsListSinglePaneComponent(
+                    uiState = listUiState,
+                    showLoading = showLoading,
+                    menuHandler = menuHandler
+                )
+            }
+        }
     }
 }
 
 @Composable
 private fun ListDetail(
     activityUiState: ContactsActivityUiState,
-    detailsUiState: ContactDetailsUiState,
-    detailsClickHandler: ContactDetailsClickHandler,
-    listUiState: ContactsListUiState,
-    listClickHandler: ContactsListClickHandler,
-    onSearchTermUpdated: (newSearchTerm: String) -> Unit,
+    detailsUiState: ContactDetailsUiState?,
+    listUiState: ContactsListUiState?,
     menuHandler: ContactsActivityMenuHandler,
     windowSizeClasses: WindowSizeClasses
 ) {
@@ -148,19 +136,19 @@ private fun ListDetail(
         topBar = {
             TopAppBar {
                 when (detailsUiState) {
-                    is ContactDetailsUiState.NoContactSelected -> Text(stringResource(id = label_contacts))
                     is ContactDetailsUiState.ViewingContactDetails -> {
                         SyncImage(uiState = detailsUiState.uiSyncState)
                         Text(detailsUiState.fullName)
                     }
+                    is ContactDetailsUiState.NoContactSelected,
+                    null -> Text(stringResource(id = label_contacts))
                 }
 
                 Spacer(modifier = Modifier.weight(1f))
 
-                ContactDetailsTopBarContentExpanded(
-                    detailsUiState = detailsUiState,
-                    eventHandler = detailsClickHandler
-                )
+                if (detailsUiState != null) {
+                    ContactDetailsTopBarContentExpanded(uiState = detailsUiState)
+                }
             }
         },
         bottomBar = {
@@ -170,11 +158,13 @@ private fun ListDetail(
             }
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = detailsClickHandler::createClick) {
-                Icon(
-                    Icons.Default.Add,
-                    contentDescription = stringResource(id = content_desc_add_contact)
-                )
+            if (detailsUiState != null) {
+                FloatingActionButton(onClick = detailsUiState.detailsClickHandler::createClick) {
+                    Icon(
+                        Icons.Default.Add,
+                        contentDescription = stringResource(id = content_desc_add_contact)
+                    )
+                }
             }
         },
         floatingActionButtonPosition = FabPosition.End,
@@ -194,20 +184,15 @@ private fun ListDetail(
                 detailModifier = Modifier.weight(1f)
             }
 
-            Column(modifier = listModifier) {
-                ContactsListContent(
-                    modifier = Modifier.fillMaxSize(),
-                    uiState = listUiState,
-                    listClickHandler = listClickHandler,
-                    onSearchTermUpdated = onSearchTermUpdated
-                )
-            }
+            if (listUiState != null)
+                Column(modifier = listModifier) {
+                    ContactsListContent(modifier = Modifier.fillMaxSize(), uiState = listUiState)
+                }
 
-            Column(modifier = detailModifier) {
-                ListDetailContactDetailsContent(
-                    detailsUiState = detailsUiState,
-                    onExitClick = detailsClickHandler::exitEditClick
-                )
+            if (detailsUiState != null) {
+                Column(modifier = detailModifier) {
+                    ListDetailContactDetailsContent(detailsUiState = detailsUiState)
+                }
             }
         }
 
@@ -218,10 +203,7 @@ private fun ListDetail(
 }
 
 @Composable
-private fun ListDetailContactDetailsContent(
-    detailsUiState: ContactDetailsUiState,
-    onExitClick: () -> Unit
-) {
+private fun ListDetailContactDetailsContent(detailsUiState: ContactDetailsUiState) {
     val isEditing = detailsUiState is ContactDetailsUiState.ViewingContactDetails
             && detailsUiState.isEditingEnabled
 
@@ -247,7 +229,7 @@ private fun ListDetailContactDetailsContent(
                 shape = MaterialTheme.shapes.small.copy(CornerSize(percent = 50)),
                 elevation = 4.dp,
             ) {
-                IconButton(onClick = onExitClick) {
+                IconButton(onClick = detailsUiState.detailsClickHandler::exitEditClick) {
                     Icon(
                         Icons.Default.Close,
                         contentDescription = stringResource(id = content_desc_cancel_edit)

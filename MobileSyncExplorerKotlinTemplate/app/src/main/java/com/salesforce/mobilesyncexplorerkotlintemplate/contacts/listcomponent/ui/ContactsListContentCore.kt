@@ -23,7 +23,6 @@ import androidx.compose.ui.unit.dp
 import com.salesforce.mobilesyncexplorerkotlintemplate.R.string.content_desc_cancel_search
 import com.salesforce.mobilesyncexplorerkotlintemplate.R.string.cta_search
 import com.salesforce.mobilesyncexplorerkotlintemplate.contacts.activity.PreviewListVm
-import com.salesforce.mobilesyncexplorerkotlintemplate.contacts.listcomponent.ContactsListClickHandler
 import com.salesforce.mobilesyncexplorerkotlintemplate.contacts.listcomponent.ContactsListUiState
 import com.salesforce.mobilesyncexplorerkotlintemplate.core.salesforceobject.LocalStatus
 import com.salesforce.mobilesyncexplorerkotlintemplate.core.salesforceobject.SObjectRecord
@@ -38,8 +37,6 @@ import com.salesforce.mobilesyncexplorerkotlintemplate.model.contacts.ContactObj
 fun ContactsListContent(
     modifier: Modifier = Modifier,
     uiState: ContactsListUiState,
-    listClickHandler: ContactsListClickHandler,
-    onSearchTermUpdated: (newSearchTerm: String) -> Unit
 ) {
     LazyColumn(modifier = modifier) {
         item {
@@ -50,7 +47,7 @@ fun ContactsListContent(
                     .fillMaxWidth()
                     .padding(8.dp),
                 value = searchTerm,
-                onValueChange = onSearchTermUpdated,
+                onValueChange = uiState.onSearchTermUpdated,
                 placeholder = { Text(stringResource(id = cta_search)) },
                 leadingIcon = {
                     if (isSearchActive) {
@@ -69,7 +66,7 @@ fun ContactsListContent(
                 },
                 trailingIcon = {
                     if (searchTerm.isNotBlank()) {
-                        IconButton(onClick = { onSearchTermUpdated("") }) {
+                        IconButton(onClick = { uiState.onSearchTermUpdated("") }) {
                             Icon(
                                 Icons.Default.Close,
                                 contentDescription = stringResource(id = content_desc_cancel_search)
@@ -86,10 +83,10 @@ fun ContactsListContent(
                 startExpanded = false,
                 model = record.sObject,
                 syncState = record.localStatus.toUiSyncState(),
-                onCardClick = { listClickHandler.contactClick(record.id) },
-                onDeleteClick = { listClickHandler.deleteClick(record.id) },
-                onUndeleteClick = { listClickHandler.undeleteClick(record.id) },
-                onEditClick = { listClickHandler.editClick(record.id) },
+                onCardClick = { uiState.listClickHandler.contactClick(record.id) },
+                onDeleteClick = { uiState.listClickHandler.deleteClick(record.id) },
+                onUndeleteClick = { uiState.listClickHandler.undeleteClick(record.id) },
+                onEditClick = { uiState.listClickHandler.editClick(record.id) },
             )
         }
     }
