@@ -78,7 +78,7 @@ data class ContactObject
             )
         } catch (ex: ContactValidationException) {
             when (ex) {
-                ContactValidationException.LastNameCannotBeBlank -> InvalidPropertyValue(
+                is ContactValidationException.LastNameBlankException -> InvalidPropertyValue(
                     propertyKey = KEY_LAST_NAME,
                     allowedValuesDescription = "Contact Last Name cannot be blank",
                     offendingJsonString = fromJson.toString()
@@ -86,10 +86,10 @@ data class ContactObject
             }.let { throw it } // exhaustive when
         }
 
-        @Throws(ContactValidationException.LastNameCannotBeBlank::class)
+        @Throws(ContactValidationException.LastNameBlankException::class)
         fun validateLastName(lastName: String?) {
             if (lastName.isNullOrBlank())
-                throw ContactValidationException.LastNameCannotBeBlank
+                throw ContactValidationException.LastNameBlankException()
         }
 
         fun formatFullName(firstName: String?, lastName: String?) = buildString {
@@ -100,7 +100,7 @@ data class ContactObject
 }
 
 sealed class ContactValidationException(override val message: String?) : Exception() {
-    object LastNameCannotBeBlank : ContactValidationException("Contact Last Name cannot be blank")
+    class LastNameBlankException : ContactValidationException("Contact Last Name cannot be blank")
 }
 
 typealias ContactRecord = SObjectRecord<ContactObject>

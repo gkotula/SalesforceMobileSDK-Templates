@@ -64,7 +64,7 @@ sealed interface ContactDetailsField : FieldUiState {
             } else {
                 isInErrorState = true
                 helperRes = when (validateException) {
-                    ContactValidationException.LastNameCannotBeBlank -> R.string.help_cannot_be_blank
+                    is ContactValidationException.LastNameBlankException -> R.string.help_cannot_be_blank
                 }
             }
         }
