@@ -193,6 +193,7 @@ fun PreviewContactListItem() {
                     modifier = Modifier.padding(8.dp),
                     startExpanded = true,
                     model = ContactObject(
+                        accountId = null,
                         firstName = "FirstFirstFirstFirstFirstFirstFirstFirstFirstFirstFirst",
                         lastName = "Last Last Last Last Last Last Last Last Last Last Last",
                         title = "Title",
@@ -208,6 +209,7 @@ fun PreviewContactListItem() {
                     modifier = Modifier.padding(8.dp),
                     startExpanded = true,
                     model = ContactObject(
+                        accountId = null,
                         firstName = "FirstFirstFirstFirstFirstFirstFirstFirstFirstFirstFirst",
                         lastName = "Last Last Last Last Last Last Last Last Last Last Last",
                         title = "Title",
@@ -222,6 +224,7 @@ fun PreviewContactListItem() {
                 ContactCard(
                     modifier = Modifier.padding(8.dp),
                     model = ContactObject(
+                        accountId = null,
                         firstName = "FirstFirstFirstFirstFirstFirstFirstFirstFirstFirstFirst",
                         lastName = "Last Last Last Last Last Last Last Last Last Last Last",
                         title = "Title",

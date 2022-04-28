@@ -238,7 +238,7 @@ abstract class SObjectSyncableRepoBase<T : SObject>(
         withContext(ioDispatcher + NonCancellable) {
             val createResult = try {
                 val elt = with(so) {
-                    createNewSoupEltBase(forObjType = objectType)
+                    createNewSoupEltBase(forObjType = deserializer.objectType)
                         .applyObjProperties()
                 }
 

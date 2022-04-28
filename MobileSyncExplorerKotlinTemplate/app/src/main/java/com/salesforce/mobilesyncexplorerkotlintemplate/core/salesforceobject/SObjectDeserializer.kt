@@ -34,9 +34,11 @@ import java.util.*
 interface SObjectDeserializer<T : SObject> {
     @Throws(CoerceException::class)
     fun coerceFromJsonOrThrow(json: JSONObject): SObjectRecord<T>
+
+    val objectType: String
 }
 
-abstract class SObjectDeserializerBase<T : SObject>(val objectType: String) :
+abstract class SObjectDeserializerBase<T : SObject>(override val objectType: String) :
     SObjectDeserializer<T> {
 
     @Throws(CoerceException::class)

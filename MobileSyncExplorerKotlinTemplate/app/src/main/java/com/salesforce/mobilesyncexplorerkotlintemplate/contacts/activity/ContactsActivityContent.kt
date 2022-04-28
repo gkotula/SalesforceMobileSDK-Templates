@@ -340,6 +340,7 @@ private fun SinglePaneListPreview() {
             id = it,
             localStatus = LocalStatus.MatchesUpstream,
             sObject = ContactObject(
+                accountId = null,
                 firstName = "First $it",
                 lastName = "Last $it",
                 title = "Title $it",
@@ -394,6 +395,7 @@ private fun SinglePaneDetailsPreview() {
             id = it,
             localStatus = LocalStatus.MatchesUpstream,
             sObject = ContactObject(
+                accountId = null,
                 firstName = "First $it",
                 lastName = "Last $it",
                 title = "Title $it",
@@ -454,6 +456,7 @@ private fun ListDetailMediumPreview() {
             id = it,
             localStatus = LocalStatus.MatchesUpstream,
             sObject = ContactObject(
+                accountId = null,
                 firstName = "First $it",
                 lastName = "Last $it",
                 title = "Title $it",
@@ -513,6 +516,7 @@ private fun ListDetailEditingPreview() {
             id = it,
             localStatus = LocalStatus.MatchesUpstream,
             sObject = ContactObject(
+                accountId = null,
                 firstName = "First $it",
                 lastName = "Last $it",
                 title = "Title $it",
@@ -572,6 +576,7 @@ private fun ListDetailNoContactPreview() {
             id = it,
             localStatus = LocalStatus.MatchesUpstream,
             sObject = ContactObject(
+                accountId = null,
                 firstName = "First $it",
                 lastName = "Last $it",
                 title = "Title $it",
@@ -635,6 +640,7 @@ private fun ListDetailExpandedPreview() {
             id = it,
             localStatus = LocalStatus.MatchesUpstream,
             sObject = ContactObject(
+                accountId = null,
                 firstName = "First $it",
                 lastName = "Last $it",
                 title = "Title $it",

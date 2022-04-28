@@ -609,6 +609,7 @@ class DefaultContactsActivityViewModel : ViewModel(), ContactsActivityViewModel 
 
         @Throws(ContactValidationException::class)
         private fun ContactDetailsUiState.ViewingContactDetails.toSObjectOrThrow() = ContactObject(
+            accountId = null, // TODO enable details view to re-parent
             firstName = firstNameField.fieldValue,
             lastName = lastNameField.fieldValue ?: "",
             title = titleField.fieldValue,

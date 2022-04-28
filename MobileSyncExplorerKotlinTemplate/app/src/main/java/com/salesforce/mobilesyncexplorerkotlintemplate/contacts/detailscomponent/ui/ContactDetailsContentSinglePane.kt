@@ -222,6 +222,7 @@ private fun ContactDetailViewModePreview() {
         id = "1",
         localStatus = LocalStatus.MatchesUpstream,
         sObject = ContactObject(
+            accountId = null,
             firstName = "FirstFirstFirstFirstFirstFirstFirstFirstFirstFirst",
             lastName = "LastLastLastLastLastLastLastLastLastLastLastLastLastLastLastLast",
             title = "Titletitletitletitletitletitletitletitletitletitletitletitletitletitle",

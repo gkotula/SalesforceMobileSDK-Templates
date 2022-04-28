@@ -39,6 +39,7 @@ import org.json.JSONObject
  */
 data class ContactObject
 @Throws(ContactValidationException::class) constructor(
+    val accountId: String?,
     val firstName: String?,
     val lastName: String,
     val title: String?,
@@ -48,11 +49,10 @@ data class ContactObject
         validateLastName(lastName)
     }
 
-    override val objectType: String = Constants.CONTACT
-
     val fullName = formatFullName(firstName = firstName, lastName = lastName)
 
     override fun JSONObject.applyObjProperties() = this.apply {
+        putOpt(KEY_ACCOUNT_ID, accountId)
         putOpt(KEY_FIRST_NAME, firstName)
         putOpt(KEY_LAST_NAME, lastName)
         putOpt(KEY_TITLE, title)
@@ -61,6 +61,7 @@ data class ContactObject
     }
 
     companion object : SObjectDeserializerBase<ContactObject>(objectType = Constants.CONTACT) {
+        const val KEY_ACCOUNT_ID = "AccountId"
         const val KEY_FIRST_NAME = "FirstName"
         const val KEY_LAST_NAME = "LastName"
         const val KEY_TITLE = "Title"
@@ -69,6 +70,7 @@ data class ContactObject
         @Throws(CoerceException::class)
         override fun buildModel(fromJson: JSONObject): ContactObject = try {
             ContactObject(
+                accountId = fromJson.optStringOrNull(KEY_ACCOUNT_ID),
                 firstName = fromJson.optStringOrNull(KEY_FIRST_NAME),
                 lastName = fromJson.optString(KEY_LAST_NAME),
                 title = fromJson.optStringOrNull(KEY_TITLE),

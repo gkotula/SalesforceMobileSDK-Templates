@@ -106,6 +106,7 @@ private fun ContactDetailsTopBarExpandedPreview() {
         id = "1",
         localStatus = LocalStatus.MatchesUpstream,
         sObject = ContactObject(
+            accountId = null,
             firstName = "First",
             lastName = "Last",
             title = null,

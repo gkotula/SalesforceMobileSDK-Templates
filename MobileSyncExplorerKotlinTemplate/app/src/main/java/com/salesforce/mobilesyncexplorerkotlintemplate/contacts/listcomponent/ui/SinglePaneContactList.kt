@@ -122,6 +122,7 @@ private fun ContactsListSinglePaneComponentPreview() {
                 id = it,
                 localStatus = LocalStatus.LocallyCreated,
                 sObject = ContactObject(
+                    accountId = null,
                     firstName = "Contact",
                     lastName = it,
                     title = "Title $it",
@@ -161,6 +162,7 @@ private fun ContactListSyncingAndSearchingPreview() {
                 id = it,
                 localStatus = LocalStatus.LocallyCreated,
                 sObject = ContactObject(
+                    accountId = null,
                     firstName = "Contact",
                     lastName = it,
                     title = "Title $it",

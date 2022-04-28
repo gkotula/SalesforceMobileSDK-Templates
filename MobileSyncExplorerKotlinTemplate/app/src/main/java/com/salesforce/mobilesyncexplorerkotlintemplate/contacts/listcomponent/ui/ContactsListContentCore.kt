@@ -135,6 +135,7 @@ private fun ContactsListContentPreview(searchTerm: String = "9") {
                 id = it,
                 localStatus = LocalStatus.MatchesUpstream,
                 sObject = ContactObject(
+                    accountId = null,
                     firstName = "First $it",
                     lastName = "Last $it",
                     title = "Title $it",
