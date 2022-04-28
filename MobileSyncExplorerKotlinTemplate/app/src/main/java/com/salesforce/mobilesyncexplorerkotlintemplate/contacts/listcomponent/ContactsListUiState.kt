@@ -27,13 +27,16 @@
 package com.salesforce.mobilesyncexplorerkotlintemplate.contacts.listcomponent
 
 import com.salesforce.mobilesyncexplorerkotlintemplate.core.salesforceobject.SObjectRecord
+import com.salesforce.mobilesyncexplorerkotlintemplate.core.ui.state.ListSearchableUiState
+import com.salesforce.mobilesyncexplorerkotlintemplate.core.ui.state.SObjectListCommonUiState
 import com.salesforce.mobilesyncexplorerkotlintemplate.model.contacts.ContactObject
 
 data class ContactsListUiState(
-    val contacts: List<SObjectRecord<ContactObject>>,
-    val curSelectedContactId: String?,
+    override val records: List<SObjectRecord<ContactObject>>,
+    override val curSelectedRecordId: String?,
     val isDoingInitialLoad: Boolean,
     val isDoingDataAction: Boolean,
-    val isSearchJobRunning: Boolean,
-    val curSearchTerm: String = ""
-)
+    override val isSearchJobRunning: Boolean,
+    override val curSearchTerm: String = "",
+    override val onSearchTermUpdated: (newSearchTerm: String) -> Unit
+) : SObjectListCommonUiState<ContactObject>, ListSearchableUiState

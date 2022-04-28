@@ -54,11 +54,12 @@ import com.salesforce.mobilesyncexplorerkotlintemplate.contacts.detailscomponent
 import com.salesforce.mobilesyncexplorerkotlintemplate.contacts.detailscomponent.ui.toPreviewViewingContactDetails
 import com.salesforce.mobilesyncexplorerkotlintemplate.contacts.listcomponent.ContactsListClickHandler
 import com.salesforce.mobilesyncexplorerkotlintemplate.contacts.listcomponent.ContactsListUiState
-import com.salesforce.mobilesyncexplorerkotlintemplate.contacts.listcomponent.ui.ContactsListContent
+import com.salesforce.mobilesyncexplorerkotlintemplate.contacts.listcomponent.ui.ContactCard
 import com.salesforce.mobilesyncexplorerkotlintemplate.contacts.listcomponent.ui.ContactsListSinglePaneComponent
 import com.salesforce.mobilesyncexplorerkotlintemplate.core.salesforceobject.LocalStatus
 import com.salesforce.mobilesyncexplorerkotlintemplate.core.salesforceobject.SObjectRecord
 import com.salesforce.mobilesyncexplorerkotlintemplate.core.ui.components.LoadingOverlay
+import com.salesforce.mobilesyncexplorerkotlintemplate.core.ui.components.SObjectListContent
 import com.salesforce.mobilesyncexplorerkotlintemplate.core.ui.state.*
 import com.salesforce.mobilesyncexplorerkotlintemplate.core.ui.theme.SalesforceMobileSDKAndroidTheme
 import com.salesforce.mobilesyncexplorerkotlintemplate.model.contacts.ContactObject
@@ -87,7 +88,6 @@ fun ContactsActivityContent(
             detailsClickHandler = activityUiInteractor.detailsClickHandler,
             listUiState = listUiState,
             listClickHandler = activityUiInteractor.listClickHandler,
-            onSearchTermUpdated = activityUiInteractor.searchTermUpdatedHandler,
             menuHandler = menuHandler
         )
         ContactsActivityContentLayout.ListDetail -> ListDetail(
@@ -96,7 +96,6 @@ fun ContactsActivityContent(
             detailsClickHandler = activityUiInteractor.detailsClickHandler,
             listUiState = listUiState,
             listClickHandler = activityUiInteractor.listClickHandler,
-            onSearchTermUpdated = activityUiInteractor.searchTermUpdatedHandler,
             menuHandler = menuHandler,
             windowSizeClasses = windowSizeClasses
         )
@@ -112,7 +111,6 @@ private fun SinglePane(
     detailsClickHandler: ContactDetailsClickHandler,
     listUiState: ContactsListUiState,
     listClickHandler: ContactsListClickHandler,
-    onSearchTermUpdated: (newSearchTerm: String) -> Unit,
     menuHandler: ContactsActivityMenuHandler,
 ) {
     val showLoading = activityUiState.dataOpIsActive || activityUiState.isSyncing
@@ -129,7 +127,6 @@ private fun SinglePane(
             uiState = listUiState,
             showLoading = showLoading,
             listClickHandler = listClickHandler,
-            onSearchTermUpdated = onSearchTermUpdated,
             menuHandler = menuHandler
         )
     }
@@ -142,7 +139,6 @@ private fun ListDetail(
     detailsClickHandler: ContactDetailsClickHandler,
     listUiState: ContactsListUiState,
     listClickHandler: ContactsListClickHandler,
-    onSearchTermUpdated: (newSearchTerm: String) -> Unit,
     menuHandler: ContactsActivityMenuHandler,
     windowSizeClasses: WindowSizeClasses
 ) {
@@ -197,12 +193,21 @@ private fun ListDetail(
             }
 
             Column(modifier = listModifier) {
-                ContactsListContent(
+                SObjectListContent(
                     modifier = Modifier.fillMaxSize(),
-                    uiState = listUiState,
-                    listClickHandler = listClickHandler,
-                    onSearchTermUpdated = onSearchTermUpdated
-                )
+                    listUiState = listUiState,
+                    searchUiState = listUiState,
+                ) {
+                    ContactCard(
+                        modifier = Modifier.padding(4.dp),
+                        model = it.sObject,
+                        syncState = it.localStatus.toUiSyncState(),
+                        onCardClick = { listClickHandler.contactClick(it.id) },
+                        onDeleteClick = { listClickHandler.deleteClick(it.id) },
+                        onEditClick = { listClickHandler.editClick(it.id) },
+                        onUndeleteClick = { listClickHandler.undeleteClick(it.id) }
+                    )
+                }
             }
 
             Column(modifier = detailModifier) {
@@ -355,11 +360,12 @@ private fun SinglePaneListPreview() {
 
     val listVm = PreviewListVm(
         uiState = ContactsListUiState(
-            contacts = contacts,
-            curSelectedContactId = null,
+            records = contacts,
+            curSelectedRecordId = null,
             isDoingInitialLoad = false,
             isDoingDataAction = false,
-            isSearchJobRunning = false
+            isSearchJobRunning = false,
+            onSearchTermUpdated = {}
         )
     )
 
@@ -412,11 +418,12 @@ private fun SinglePaneDetailsPreview() {
 
     val listVm = PreviewListVm(
         uiState = ContactsListUiState(
-            contacts = contacts,
-            curSelectedContactId = selectedContact.id,
+            records = contacts,
+            curSelectedRecordId = selectedContact.id,
             isDoingInitialLoad = false,
             isDoingDataAction = false,
-            isSearchJobRunning = false
+            isSearchJobRunning = false,
+            onSearchTermUpdated = {}
         )
     )
 
@@ -473,11 +480,12 @@ private fun ListDetailMediumPreview() {
 
     val listVm = PreviewListVm(
         uiState = ContactsListUiState(
-            contacts = contacts,
-            curSelectedContactId = selectedContact.id,
+            records = contacts,
+            curSelectedRecordId = selectedContact.id,
             isDoingInitialLoad = false,
             isDoingDataAction = false,
-            isSearchJobRunning = false
+            isSearchJobRunning = false,
+            onSearchTermUpdated = {}
         )
     )
 
@@ -495,7 +503,6 @@ private fun ListDetailMediumPreview() {
                 detailsClickHandler = detailsVm,
                 listUiState = listVm.uiStateValue,
                 listClickHandler = listVm,
-                onSearchTermUpdated = listVm::onSearchTermUpdated,
                 menuHandler = PREVIEW_CONTACTS_ACTIVITY_MENU_HANDLER,
                 WindowSizeClasses(horiz = WindowSizeClass.Medium, vert = WindowSizeClass.Expanded)
             )
@@ -533,11 +540,12 @@ private fun ListDetailEditingPreview() {
 
     val listVm = PreviewListVm(
         uiState = ContactsListUiState(
-            contacts = contacts,
-            curSelectedContactId = selectedContact.id,
+            records = contacts,
+            curSelectedRecordId = selectedContact.id,
             isDoingInitialLoad = false,
             isDoingDataAction = false,
-            isSearchJobRunning = false
+            isSearchJobRunning = false,
+            onSearchTermUpdated = {}
         )
     )
 
@@ -555,7 +563,6 @@ private fun ListDetailEditingPreview() {
                 detailsClickHandler = detailsVm,
                 listUiState = listVm.uiStateValue,
                 listClickHandler = listVm,
-                onSearchTermUpdated = listVm::onSearchTermUpdated,
                 menuHandler = PREVIEW_CONTACTS_ACTIVITY_MENU_HANDLER,
                 WindowSizeClasses(horiz = WindowSizeClass.Medium, vert = WindowSizeClass.Expanded)
             )
@@ -591,12 +598,13 @@ private fun ListDetailNoContactPreview() {
 
     val listVm = PreviewListVm(
         uiState = ContactsListUiState(
-            contacts = contacts,
-            curSelectedContactId = null,
+            records = contacts,
+            curSelectedRecordId = null,
             isDoingInitialLoad = false,
             isDoingDataAction = false,
             isSearchJobRunning = false,
-            curSearchTerm = curSearchTerm
+            curSearchTerm = curSearchTerm,
+            onSearchTermUpdated = {}
         )
     )
 
@@ -614,7 +622,6 @@ private fun ListDetailNoContactPreview() {
                 detailsClickHandler = detailsVm,
                 listUiState = listVm.uiStateValue,
                 listClickHandler = listVm,
-                onSearchTermUpdated = listVm::onSearchTermUpdated,
                 menuHandler = PREVIEW_CONTACTS_ACTIVITY_MENU_HANDLER,
                 WindowSizeClasses(horiz = WindowSizeClass.Medium, vert = WindowSizeClass.Expanded)
             )
@@ -657,11 +664,12 @@ private fun ListDetailExpandedPreview() {
 
     val listVm = PreviewListVm(
         uiState = ContactsListUiState(
-            contacts = contacts,
-            curSelectedContactId = selectedContact.id,
+            records = contacts,
+            curSelectedRecordId = selectedContact.id,
             isDoingInitialLoad = false,
             isDoingDataAction = false,
-            isSearchJobRunning = false
+            isSearchJobRunning = false,
+            onSearchTermUpdated = {}
         )
     )
 
@@ -679,7 +687,6 @@ private fun ListDetailExpandedPreview() {
                 detailsClickHandler = detailsVm,
                 listUiState = listVm.uiStateValue,
                 listClickHandler = listVm,
-                onSearchTermUpdated = listVm::onSearchTermUpdated,
                 menuHandler = PREVIEW_CONTACTS_ACTIVITY_MENU_HANDLER,
                 WindowSizeClasses(horiz = WindowSizeClass.Expanded, vert = WindowSizeClass.Expanded)
             )
@@ -736,8 +743,6 @@ class PreviewActivityVm(
     override val detailsClickHandler: ContactDetailsClickHandler get() = detailsVm
     override val detailsFieldChangeHandler: ContactDetailsFieldChangeHandler get() = detailsVm
     override val listClickHandler: ContactsListClickHandler get() = listVm
-    override val searchTermUpdatedHandler: (newSearchTerm: String) -> Unit
-        get() = listVm::onSearchTermUpdated
     override val messages: Flow<ContactsActivityMessages>
         get() = emptyFlow()
 }

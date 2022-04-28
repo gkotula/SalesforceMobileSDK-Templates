@@ -47,6 +47,8 @@ import com.salesforce.mobilesyncexplorerkotlintemplate.contacts.listcomponent.Co
 import com.salesforce.mobilesyncexplorerkotlintemplate.core.salesforceobject.LocalStatus
 import com.salesforce.mobilesyncexplorerkotlintemplate.core.salesforceobject.SObjectRecord
 import com.salesforce.mobilesyncexplorerkotlintemplate.core.ui.components.LoadingOverlay
+import com.salesforce.mobilesyncexplorerkotlintemplate.core.ui.components.SObjectListContent
+import com.salesforce.mobilesyncexplorerkotlintemplate.core.ui.state.toUiSyncState
 import com.salesforce.mobilesyncexplorerkotlintemplate.core.ui.theme.SalesforceMobileSDKAndroidTheme
 import com.salesforce.mobilesyncexplorerkotlintemplate.model.contacts.ContactObject
 import com.salesforce.mobilesyncexplorerkotlintemplate.model.contacts.ContactRecord
@@ -58,7 +60,6 @@ fun ContactsListSinglePaneComponent(
     uiState: ContactsListUiState,
     showLoading: Boolean,
     listClickHandler: ContactsListClickHandler,
-    onSearchTermUpdated: (newSearchTerm: String) -> Unit,
     menuHandler: ContactsActivityMenuHandler
 ) {
     Scaffold(
@@ -77,15 +78,24 @@ fun ContactsListSinglePaneComponent(
         floatingActionButton = { ContactsListFabSinglePane(listCreateClick = listClickHandler::createClick) },
         floatingActionButtonPosition = FabPosition.Center,
         isFloatingActionButtonDocked = true,
-    ) {
-        ContactsListContent(
+    ) { padding ->
+        SObjectListContent(
             modifier = Modifier
-                .padding(it)
+                .padding(padding)
                 .then(contentModifier),
-            uiState = uiState,
-            listClickHandler = listClickHandler,
-            onSearchTermUpdated = onSearchTermUpdated
-        )
+            listUiState = uiState,
+            searchUiState = uiState
+        ) { record ->
+            ContactCard(
+                modifier = Modifier.padding(4.dp),
+                model = record.sObject,
+                syncState = record.localStatus.toUiSyncState(),
+                onCardClick = { listClickHandler.contactClick(record.id) },
+                onDeleteClick = { listClickHandler.deleteClick(record.id) },
+                onEditClick = { listClickHandler.editClick(record.id) },
+                onUndeleteClick = { listClickHandler.undeleteClick(record.id) }
+            )
+        }
 
         if (showLoading) {
             LoadingOverlay()
@@ -136,16 +146,16 @@ private fun ContactsListSinglePaneComponentPreview() {
             ContactsListSinglePaneComponent(
                 modifier = Modifier.padding(4.dp),
                 uiState = ContactsListUiState(
-                    contacts = contacts,
-                    curSelectedContactId = null,
+                    records = contacts,
+                    curSelectedRecordId = null,
                     isDoingInitialLoad = false,
                     isDoingDataAction = false,
-                    isSearchJobRunning = false
+                    isSearchJobRunning = false,
+                    onSearchTermUpdated = {}
                 ),
                 showLoading = false,
                 listClickHandler = PREVIEW_LIST_ITEM_CLICK_HANDLER,
                 menuHandler = PREVIEW_CONTACTS_ACTIVITY_MENU_HANDLER,
-                onSearchTermUpdated = {}
             )
         }
     }
@@ -179,17 +189,17 @@ private fun ContactListSyncingAndSearchingPreview() {
             ContactsListSinglePaneComponent(
                 modifier = Modifier.padding(4.dp),
                 uiState = ContactsListUiState(
-                    contacts = contacts,
-                    curSelectedContactId = null,
+                    records = contacts,
+                    curSelectedRecordId = null,
                     isDoingInitialLoad = false,
                     isDoingDataAction = false,
                     isSearchJobRunning = false,
-                    curSearchTerm = curSearchTerm
+                    curSearchTerm = curSearchTerm,
+                    onSearchTermUpdated = {}
                 ),
                 showLoading = false,
                 listClickHandler = PREVIEW_LIST_ITEM_CLICK_HANDLER,
                 menuHandler = PREVIEW_CONTACTS_ACTIVITY_MENU_HANDLER,
-                onSearchTermUpdated = {}
             )
         }
     }
@@ -205,16 +215,16 @@ private fun ContactListLoadingPreview() {
             ContactsListSinglePaneComponent(
                 modifier = Modifier.padding(4.dp),
                 uiState = ContactsListUiState(
-                    contacts = contacts,
-                    curSelectedContactId = null,
+                    records = contacts,
+                    curSelectedRecordId = null,
                     isDoingInitialLoad = true,
                     isDoingDataAction = false,
-                    isSearchJobRunning = false
+                    isSearchJobRunning = false,
+                    onSearchTermUpdated = {}
                 ),
                 showLoading = true,
                 listClickHandler = PREVIEW_LIST_ITEM_CLICK_HANDLER,
                 menuHandler = PREVIEW_CONTACTS_ACTIVITY_MENU_HANDLER,
-                onSearchTermUpdated = {}
             )
         }
     }

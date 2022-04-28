@@ -59,7 +59,6 @@ interface ContactsActivityUiInteractor {
     val detailsFieldChangeHandler: ContactDetailsFieldChangeHandler
     val detailsClickHandler: ContactDetailsClickHandler
     val listClickHandler: ContactsListClickHandler
-    val searchTermUpdatedHandler: (newSearchTerm: String) -> Unit
 }
 
 interface ContactsActivityViewModel : ContactsActivityUiInteractor {
@@ -81,7 +80,6 @@ class DefaultContactsActivityViewModel : ViewModel(), ContactsActivityViewModel 
     override val detailsClickHandler: ContactDetailsClickHandler get() = detailsVm
     override val detailsFieldChangeHandler: ContactDetailsFieldChangeHandler get() = detailsVm
     override val listClickHandler: ContactsListClickHandler get() = listVm
-    override val searchTermUpdatedHandler: (newSearchTerm: String) -> Unit get() = listVm::onSearchTermUpdated
 
     /**
      * Acquire this lock and hold it for the entire time you are handling an event. Events are
@@ -658,11 +656,12 @@ class DefaultContactsActivityViewModel : ViewModel(), ContactsActivityViewModel 
 
         private val initialState: ContactsListUiState
             get() = ContactsListUiState(
-                contacts = emptyList(),
-                curSelectedContactId = null,
+                records = emptyList(),
+                curSelectedRecordId = null,
                 isDoingInitialLoad = true,
                 isDoingDataAction = false,
-                isSearchJobRunning = false
+                isSearchJobRunning = false,
+                onSearchTermUpdated = ::onSearchTermUpdated
             )
 
         private val mutListUiState = MutableStateFlow(initialState)
@@ -681,13 +680,13 @@ class DefaultContactsActivityViewModel : ViewModel(), ContactsActivityViewModel 
             }
 
             restartSearch(searchTerm = uiState.value.curSearchTerm) { filteredResults ->
-                mutListUiState.value = uiState.value.copy(contacts = filteredResults)
+                mutListUiState.value = uiState.value.copy(records = filteredResults)
             }
             // TODO handle when selected contact is no longer in the records list
         }
 
         fun setSelectedContact(id: String?) {
-            mutListUiState.value = uiState.value.copy(curSelectedContactId = id)
+            mutListUiState.value = uiState.value.copy(curSelectedRecordId = id)
         }
 
         override fun contactClick(contactId: String) = safeHandleUiEvent {
@@ -715,7 +714,7 @@ class DefaultContactsActivityViewModel : ViewModel(), ContactsActivityViewModel 
 
             restartSearch(searchTerm = newSearchTerm) { filteredList ->
                 eventMutex.withLockDebug {
-                    mutListUiState.value = uiState.value.copy(contacts = filteredList)
+                    mutListUiState.value = uiState.value.copy(records = filteredList)
                 }
             }
         }

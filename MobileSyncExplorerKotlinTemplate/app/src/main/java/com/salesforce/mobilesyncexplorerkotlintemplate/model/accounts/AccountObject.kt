@@ -4,6 +4,7 @@ import com.salesforce.androidsdk.mobilesync.util.Constants
 import com.salesforce.mobilesyncexplorerkotlintemplate.core.extensions.optStringOrNull
 import com.salesforce.mobilesyncexplorerkotlintemplate.core.salesforceobject.SObject
 import com.salesforce.mobilesyncexplorerkotlintemplate.core.salesforceobject.SObjectDeserializerBase
+import com.salesforce.mobilesyncexplorerkotlintemplate.core.salesforceobject.SObjectRecord
 import org.json.JSONObject
 
 data class AccountObject(
@@ -26,3 +27,5 @@ data class AccountObject(
         }
     }
 }
+
+typealias AccountRecord = SObjectRecord<AccountObject>
