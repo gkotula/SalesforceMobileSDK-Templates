@@ -122,7 +122,7 @@ private fun ContactCardInnerContent(
                 modifier = Modifier
                     .size(48.dp)
                     .padding(4.dp),
-                uiState = syncState
+                uiSyncState = syncState
             )
 
             ExpandoButton(

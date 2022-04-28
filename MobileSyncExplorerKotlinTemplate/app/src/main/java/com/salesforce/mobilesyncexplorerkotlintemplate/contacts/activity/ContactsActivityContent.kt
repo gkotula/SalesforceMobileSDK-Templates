@@ -148,7 +148,7 @@ private fun ListDetail(
                 when (detailsUiState) {
                     is ContactDetailsUiState.NoContactSelected -> Text(stringResource(id = label_contacts))
                     is ContactDetailsUiState.ViewingContactDetails -> {
-                        SyncImage(uiState = detailsUiState.uiSyncState)
+                        SyncImage(uiSyncState = detailsUiState.uiSyncState)
                         Text(detailsUiState.fullName)
                     }
                 }
@@ -299,8 +299,8 @@ fun ContactsActivityMenuButton(menuHandler: ContactsActivityMenuHandler) {
 }
 
 @Composable
-fun SyncImage(modifier: Modifier = Modifier, uiState: SObjectUiSyncState) {
-    when (uiState) {
+fun SyncImage(modifier: Modifier = Modifier, uiSyncState: SObjectUiSyncState) {
+    when (uiSyncState) {
         SObjectUiSyncState.NotSaved -> Icon(
             Icons.Default.Star,
             contentDescription = stringResource(id = content_desc_not_saved)

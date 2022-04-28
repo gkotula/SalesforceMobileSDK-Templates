@@ -76,7 +76,7 @@ fun ContactDetailsContentSinglePane(
                     label = contactDetailsUi?.fullName ?: "",
                     syncIconContent = {
                         contactDetailsUi?.let {
-                            SyncImage(uiState = contactDetailsUi.uiSyncState)
+                            SyncImage(uiSyncState = contactDetailsUi.uiSyncState)
                         }
                     },
                     onUpClick =
