@@ -26,6 +26,7 @@
  */
 package com.salesforce.mobilesyncexplorerkotlintemplate.core.repos
 
+import android.util.Log
 import com.salesforce.androidsdk.accounts.UserAccount
 import com.salesforce.androidsdk.mobilesync.app.MobileSyncSDKManager
 import com.salesforce.androidsdk.smartstore.store.SmartStore
@@ -34,7 +35,9 @@ import com.salesforce.mobilesyncexplorerkotlintemplate.core.extensions.map
 import com.salesforce.mobilesyncexplorerkotlintemplate.core.extensions.partitionBySuccess
 import com.salesforce.mobilesyncexplorerkotlintemplate.core.repos.views.AllRecordsView
 import com.salesforce.mobilesyncexplorerkotlintemplate.core.repos.views.ExactIdView
-import com.salesforce.mobilesyncexplorerkotlintemplate.core.salesforceobject.*
+import com.salesforce.mobilesyncexplorerkotlintemplate.core.salesforceobject.SObject
+import com.salesforce.mobilesyncexplorerkotlintemplate.core.salesforceobject.SObjectDeserializer
+import com.salesforce.mobilesyncexplorerkotlintemplate.core.salesforceobject.SObjectRecord
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
@@ -66,7 +69,10 @@ abstract class CrudRepoBase<T : SObject>(
         }
     }
 
-    override suspend fun allView(pageSize: UInt, pageIndex: UInt): Flow<Map<String, SObjectRecord<T>>> =
+    override suspend fun allView(
+        pageSize: UInt,
+        pageIndex: UInt
+    ): Flow<Map<String, SObjectRecord<T>>> =
         viewsMutex.withLock {
             val key = PageSizeAndIndex(pageSize = pageSize, pageIndex = pageIndex)
             allQueryViews[key]?.let { return@withLock it }
@@ -102,9 +108,21 @@ abstract class CrudRepoBase<T : SObject>(
         ).items
             .map { deserializer.coerceFromJsonOrThrow(it) }
             .flowOn(workerDispatcher)
+            .onCompletion { ex ->
+                // TODO how to handle exceptions like "id not found"?  This is getting complicated...
+//                if (ex != null) {
+//                    // TODO use SF logging framework
+//                    Log.e(TAG, ex.message ?: ex.toString())
+//                }
+//                viewsMutex.withLock { exactIdQueryViews.remove(id) }
+            }
             .shareIn(appScope, started = SharingStarted.WhileSubscribed(), replay = 1)
 
         exactIdQueryViews[id] = flow
         flow
+    }
+
+    private companion object {
+        private val TAG = CrudRepoBase::class.java.simpleName
     }
 }

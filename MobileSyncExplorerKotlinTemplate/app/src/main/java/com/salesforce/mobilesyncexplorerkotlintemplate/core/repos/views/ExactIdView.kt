@@ -29,6 +29,7 @@ package com.salesforce.mobilesyncexplorerkotlintemplate.core.repos.views
 import com.salesforce.androidsdk.mobilesync.util.Constants
 import com.salesforce.androidsdk.smartstore.store.QuerySpec
 import com.salesforce.androidsdk.smartstore.store.SmartStore
+import com.salesforce.androidsdk.smartstore.store.SmartStore.Companion.SOUP_ENTRY_ID
 import com.salesforce.androidsdk.smartstore.store.StoreUpdatesEventBus
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -51,21 +52,39 @@ class ExactIdView(
         1
     )
 
+    // TODO what happens when the row is deleted?  Do we close the view, or
+    private var soupId = INVALID_SOUP_ID
+
+    @Throws(NoSuchElementException::class)
     private suspend fun runQuery() = withContext(ioDispatcher) {
         // TODO how to handle exceptions?
         val results = store.query(querySpec = query, pageIndex = 1)
 
-        if (results.length() != 1) {
-            TODO("More than one record returned with ID = $id: $results")
+        if (results.length() > 0) {
+            results.getJSONObject(0)
+        } else {
+            throw NoSuchElementException()
         }
-
-        results.getJSONObject(0)
     }
 
     val items: Flow<JSONObject> = StoreUpdatesEventBus.bus
-        .filter { event -> event.soupNamesToUpdates[soupName]?.updates?.contains(id) == true }
+        .filter { event -> event.soupNamesToUpdates[soupName]?.updates?.contains(soupId) == true }
         .map { runQuery() }
-        .onStart { emit(runQuery()) }
+        .onStart {
+            val result = runQuery()
+
+            soupId = result.optInt(SOUP_ENTRY_ID, INVALID_SOUP_ID)
+
+            if (soupId == INVALID_SOUP_ID) {
+                throw NoSuchElementException()
+            }
+
+            emit(result)
+        }
         .flowOn(ioDispatcher)
         .distinctUntilChanged()
+
+    private companion object {
+        private const val INVALID_SOUP_ID = -1
+    }
 }
