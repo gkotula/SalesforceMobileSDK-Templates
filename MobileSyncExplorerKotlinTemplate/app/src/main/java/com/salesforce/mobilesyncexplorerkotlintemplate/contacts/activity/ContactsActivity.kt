@@ -48,7 +48,6 @@ import com.salesforce.androidsdk.ui.SalesforceActivityDelegate
 import com.salesforce.androidsdk.ui.SalesforceActivityInterface
 import com.salesforce.mobilesyncexplorerkotlintemplate.core.ui.state.toWindowSizeClasses
 import com.salesforce.mobilesyncexplorerkotlintemplate.core.ui.theme.SalesforceMobileSDKAndroidTheme
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 
 class ContactsActivity
@@ -172,7 +171,7 @@ class ContactsActivity
     }
 
     override fun onSyncClick() {
-        vm.fullSync()
+        vm.runSync()
     }
 
     companion object {

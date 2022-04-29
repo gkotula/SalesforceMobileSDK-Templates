@@ -30,18 +30,28 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.salesforce.androidsdk.accounts.UserAccount
 import com.salesforce.androidsdk.analytics.logger.SalesforceLogger
+import com.salesforce.androidsdk.mobilesync.manager.SyncManager
+import com.salesforce.mobilesyncexplorerkotlintemplate.app.SYNC_DOWN_BRIEFCASE
+import com.salesforce.mobilesyncexplorerkotlintemplate.app.SYNC_UP_CONTACTS
 import com.salesforce.mobilesyncexplorerkotlintemplate.app.appContext
 import com.salesforce.mobilesyncexplorerkotlintemplate.contacts.activity.ContactsActivityMessages.*
 import com.salesforce.mobilesyncexplorerkotlintemplate.contacts.detailscomponent.*
 import com.salesforce.mobilesyncexplorerkotlintemplate.contacts.listcomponent.ContactsListClickHandler
 import com.salesforce.mobilesyncexplorerkotlintemplate.contacts.listcomponent.ContactsListUiState
+import com.salesforce.mobilesyncexplorerkotlintemplate.core.CleanResyncGhostsException
 import com.salesforce.mobilesyncexplorerkotlintemplate.core.extensions.withLockDebug
 import com.salesforce.mobilesyncexplorerkotlintemplate.core.repos.RepoOperationException
-import com.salesforce.mobilesyncexplorerkotlintemplate.core.repos.SyncDownException
-import com.salesforce.mobilesyncexplorerkotlintemplate.core.repos.SyncUpException
+import com.salesforce.mobilesyncexplorerkotlintemplate.core.repos.SyncException
+import com.salesforce.mobilesyncexplorerkotlintemplate.core.suspendCleanResyncGhosts
+import com.salesforce.mobilesyncexplorerkotlintemplate.core.suspendReSync
 import com.salesforce.mobilesyncexplorerkotlintemplate.core.ui.state.*
+import com.salesforce.mobilesyncexplorerkotlintemplate.model.accounts.AccountObject
+import com.salesforce.mobilesyncexplorerkotlintemplate.model.accounts.AccountRecord
 import com.salesforce.mobilesyncexplorerkotlintemplate.model.accounts.AccountsRepo
-import com.salesforce.mobilesyncexplorerkotlintemplate.model.contacts.*
+import com.salesforce.mobilesyncexplorerkotlintemplate.model.contacts.ContactObject
+import com.salesforce.mobilesyncexplorerkotlintemplate.model.contacts.ContactRecord
+import com.salesforce.mobilesyncexplorerkotlintemplate.model.contacts.ContactValidationException
+import com.salesforce.mobilesyncexplorerkotlintemplate.model.contacts.ContactsRepo
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.*
@@ -66,7 +76,7 @@ interface ContactsActivityViewModel : ContactsActivityUiInteractor {
     val isHandlingBackEvents: StateFlow<Boolean>
 
     fun switchUser(newUser: UserAccount)
-    fun fullSync()
+    fun runSync(cleanGhosts: Boolean = false)
     fun handleBackClick()
 }
 
@@ -111,13 +121,16 @@ class DefaultContactsActivityViewModel : ViewModel(), ContactsActivityViewModel 
     override val messages: Flow<ContactsActivityMessages> get() = mutMessages
 
     @Volatile
-    private var curRecordsByIds: Map<String, ContactRecord> = emptyMap()
+    private var curRecordsByIds: Map<String, ContactsRepo.ContactWithRelatedAccount> = emptyMap()
 
     @Volatile
     private var hasInitialAccount = false
 
     @Volatile
-    private lateinit var contactsRepo: ContactsRepoOld
+    private lateinit var syncManager: SyncManager
+
+    @Volatile
+    private lateinit var contactsRepo: ContactsRepo
 
     @Volatile
     private lateinit var accountsRepo: AccountsRepo
@@ -136,45 +149,47 @@ class DefaultContactsActivityViewModel : ViewModel(), ContactsActivityViewModel 
                 repoCollectorJob?.cancelAndJoin()
 
                 curUser = newUser
-                contactsRepo = DefaultContactsRepoOld(account = newUser)
+                syncManager = SyncManager.getInstance(newUser)
+//                contactsRepo = DefaultContactsRepoOld(account = newUser)
 
                 detailsVm.reset()
                 listVm.reset()
 
-                contactsRepo.refreshRecordsListFromSmartStore()
-
                 repoCollectorJob = viewModelScope.launch {
-                    contactsRepo.recordsById.collect { records ->
-                        eventMutex.withLockDebug {
-                            curRecordsByIds = records
-                            detailsVm.onRecordsEmitted()
-                            listVm.onRecordsEmitted()
+                    contactsRepo.allWithRelatedAccountsView(pageIndex = 1u, pageSize = 10_000u)
+                        .collect { emission ->
+                            eventMutex.withLockDebug {
+                                curRecordsByIds = emission
+                                detailsVm.onRecordsEmitted()
+                                listVm.onRecordsEmitted()
+                            }
                         }
-                    }
                 }
 
                 hasInitialAccount = true
 
-                fullSync()
+                runSync()
             }
         }
     }
 
-    override fun fullSync() {
+    override fun runSync(cleanGhosts: Boolean) {
         viewModelScope.launch {
-            eventMutex.withLockDebug {
+            val syncManager = eventMutex.withLockDebug {
+                if (hasInitialAccount) return@launch
                 mutActivityUiState.value = activityUiState.value.copy(isSyncing = true)
+                syncManager
             }
 
             val syncUpSuccess = try {
-                contactsRepo.syncUp()
+                syncManager.suspendReSync(SYNC_UP_CONTACTS)
                 true
-            } catch (ex: SyncUpException) {
+            } catch (ex: SyncException) {
                 logger.e(TAG, ex.toString())
 
                 when (ex) {
-                    is SyncUpException.FailedToFinish -> SyncUpFinishFailed
-                    is SyncUpException.FailedToStart -> SyncUpStartFailed
+                    is SyncException.FailedToFinish -> SyncUpFinishFailed
+                    is SyncException.FailedToStart -> SyncUpStartFailed
                 }.also {
                     mutMessages.tryEmit(it)
                 }
@@ -182,22 +197,31 @@ class DefaultContactsActivityViewModel : ViewModel(), ContactsActivityViewModel 
                 false
             }
 
-            if (syncUpSuccess) {
-                try {
-                    contactsRepo.syncDown()
-                } catch (ex: SyncDownException) {
-                    logger.e(TAG, ex.toString())
+            val syncDownSuccess = syncUpSuccess && try {
+                syncManager.suspendReSync(SYNC_DOWN_BRIEFCASE)
+                true
+            } catch (ex: SyncException) {
+                logger.e(TAG, ex.toString())
 
-                    when (ex) {
-                        is SyncDownException.CleaningUpstreamRecordsFailed -> CleanGhostsFailed
-                        is SyncDownException.FailedToFinish -> SyncDownFinishFailed
-                        is SyncDownException.FailedToStart -> SyncDownStartFailed
-                    }.also {
-                        mutMessages.tryEmit(it)
-                    }
-                } catch (ex: RepoOperationException.SmartStoreOperationFailed) {
+                when (ex) {
+                    is SyncException.FailedToFinish -> SyncDownFinishFailed
+                    is SyncException.FailedToStart -> SyncDownStartFailed
+                }.also {
+                    mutMessages.tryEmit(it)
+                }
+                false
+            } catch (ex: RepoOperationException.SmartStoreOperationFailed) {
+                logger.e(TAG, ex.toString())
+                mutMessages.tryEmit(RepoRefreshFailed)
+                false
+            }
+
+            if (syncDownSuccess && cleanGhosts) {
+                try {
+                    syncManager.suspendCleanResyncGhosts(SYNC_DOWN_BRIEFCASE)
+                } catch (ex: CleanResyncGhostsException) {
                     logger.e(TAG, ex.toString())
-                    mutMessages.tryEmit(RepoRefreshFailed)
+                    mutMessages.tryEmit(CleanGhostsFailed)
                 }
             }
 
@@ -224,7 +248,7 @@ class DefaultContactsActivityViewModel : ViewModel(), ContactsActivityViewModel 
             return
         }
 
-        val record = contactId?.let { curRecordsByIds[contactId] }
+        val record = contactId?.let { curRecordsByIds[contactId]?.contact }
 
         val mayContinue = !detailsVm.hasUnsavedChanges || suspendCoroutine { cont ->
             val discardChangesDialog = DiscardChangesDialogUiState(
@@ -306,7 +330,7 @@ class DefaultContactsActivityViewModel : ViewModel(), ContactsActivityViewModel 
         val confirmed = suspendCoroutine<Boolean> { cont ->
             val deleteDialog = DeleteConfirmationDialogUiState(
                 objIdToDelete = idToDelete,
-                objName = curRecordsByIds[idToDelete]?.sObject?.fullName,
+                objName = curRecordsByIds[idToDelete]?.contact?.sObject?.fullName,
                 onCancelDelete = { cont.resume(value = false) },
                 onConfirmDelete = { cont.resume(value = true) }
             )
@@ -347,7 +371,7 @@ class DefaultContactsActivityViewModel : ViewModel(), ContactsActivityViewModel 
         val confirmed = suspendCoroutine<Boolean> { cont ->
             val undeleteDialog = UndeleteConfirmationDialogUiState(
                 objIdToUndelete = idToUndelete,
-                objName = curRecordsByIds[idToUndelete]?.sObject?.fullName,
+                objName = curRecordsByIds[idToUndelete]?.contact?.sObject?.fullName,
                 onCancelUndelete = { cont.resume(value = false) },
                 onConfirmUndelete = { cont.resume(value = true) }
             )
@@ -432,8 +456,9 @@ class DefaultContactsActivityViewModel : ViewModel(), ContactsActivityViewModel 
 
         val uiState: StateFlow<ContactDetailsUiState> get() = mutDetailsUiState
 
-        val willHandleBack: Boolean get() =
-            uiState.value is ContactDetailsUiState.ViewingContactDetails
+        val willHandleBack: Boolean
+            get() =
+                uiState.value is ContactDetailsUiState.ViewingContactDetails
 
         fun reset() {
             mutDetailsUiState.value = initialState
@@ -455,7 +480,10 @@ class DefaultContactsActivityViewModel : ViewModel(), ContactsActivityViewModel 
             }
 
             if (!viewingState.isEditingEnabled) {
-                clobberRecord(record = curRecordsByIds[viewingState.recordId], editing = false)
+                clobberRecord(
+                    record = curRecordsByIds[viewingState.recordId],
+                    editing = false
+                )
             }
 
             // if editing, let the user keep their changes
@@ -476,6 +504,7 @@ class DefaultContactsActivityViewModel : ViewModel(), ContactsActivityViewModel 
         }
 
         fun clobberRecord(record: ContactRecord?, editing: Boolean) {
+            val relatedAccount = record?.id?.let { curRecordsByIds[it]?.account }
             if (record == null) {
                 if (editing) {
                     // Creating new contact
@@ -498,7 +527,7 @@ class DefaultContactsActivityViewModel : ViewModel(), ContactsActivityViewModel 
                             onValueChange = ::onDepartmentChange
                         ),
                         accountField = ContactDetailsField.AccountName(
-                            fieldValue = null,
+                            fieldValue = relatedAccount?.sObject?.name,
                             onClick = ::onAccountClick
                         ),
 
@@ -524,7 +553,7 @@ class DefaultContactsActivityViewModel : ViewModel(), ContactsActivityViewModel 
                 return when (val curState = uiState.value) {
                     is ContactDetailsUiState.ViewingContactDetails -> curState.recordId?.let {
                         try {
-                            curState.toSObjectOrThrow() != curRecordsByIds[it]?.sObject
+                            curState.toSObjectOrThrow() != curRecordsByIds[it]?.contact?.sObject
                         } catch (ex: ContactValidationException) {
                             // invalid field values means there are unsaved changes
                             true
@@ -617,6 +646,10 @@ class DefaultContactsActivityViewModel : ViewModel(), ContactsActivityViewModel 
             )
         }
 
+        private fun onAccountFieldClick() = safeHandleUiEvent {
+            TODO("onAccountFieldClick")
+        }
+
         fun onAccountClick() = safeHandleUiEvent {
             TODO("onAccountClick()")
         }
@@ -631,6 +664,7 @@ class DefaultContactsActivityViewModel : ViewModel(), ContactsActivityViewModel 
         )
 
         private fun ContactRecord.buildViewingContactUiState(
+            relatedAccount: AccountRecord?,
             uiSyncState: SObjectUiSyncState,
             isEditingEnabled: Boolean,
             shouldScrollToErrorField: Boolean,
@@ -640,11 +674,11 @@ class DefaultContactsActivityViewModel : ViewModel(), ContactsActivityViewModel 
                 firstNameField = sObject.buildFirstNameField(),
                 lastNameField = sObject.buildLastNameField(),
                 titleField = sObject.buildTitleField(),
+                accountField = relatedAccount?.sObject.buildAccountField(),
                 departmentField = sObject.buildDepartmentField(),
                 uiSyncState = uiSyncState,
                 isEditingEnabled = isEditingEnabled,
                 shouldScrollToErrorField = shouldScrollToErrorField,
-                accountField = TODO("ContactRecord.buildViewingContactUiState() - accountField init")
             )
         }
 
@@ -666,6 +700,11 @@ class DefaultContactsActivityViewModel : ViewModel(), ContactsActivityViewModel 
         private fun ContactObject.buildDepartmentField() = ContactDetailsField.Department(
             fieldValue = department,
             onValueChange = this@DefaultContactDetailsViewModel::onDepartmentChange
+        )
+
+        private fun AccountObject?.buildAccountField() = ContactDetailsField.AccountName(
+            fieldValue = this?.name,
+            onClick = this@DefaultContactDetailsViewModel::onAccountFieldClick
         )
     }
 
@@ -743,7 +782,7 @@ class DefaultContactsActivityViewModel : ViewModel(), ContactsActivityViewModel 
             searchTerm: String,
             block: suspend (filteredList: List<ContactRecord>) -> Unit
         ) {
-            val contacts = curRecordsByIds.values.toList()
+            val contacts = curRecordsByIds.values.map { it.contact }
 
             curSearchJob?.cancel()
             curSearchJob = viewModelScope.launch(Dispatchers.Default) {

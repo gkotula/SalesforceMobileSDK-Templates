@@ -31,23 +31,23 @@ import com.salesforce.androidsdk.mobilesync.app.MobileSyncSDKManager
 import com.salesforce.androidsdk.mobilesync.manager.SyncManager
 import com.salesforce.androidsdk.mobilesync.target.SyncTarget.*
 import com.salesforce.androidsdk.mobilesync.util.Constants
-import com.salesforce.androidsdk.mobilesync.util.SyncState
 import com.salesforce.androidsdk.smartstore.store.QuerySpec
 import com.salesforce.androidsdk.smartstore.store.SmartStore
-import com.salesforce.mobilesyncexplorerkotlintemplate.core.CleanResyncGhostsException
+import com.salesforce.mobilesyncexplorerkotlintemplate.app.SYNC_DOWN_BRIEFCASE
+import com.salesforce.mobilesyncexplorerkotlintemplate.app.SYNC_UP_CONTACTS
 import com.salesforce.mobilesyncexplorerkotlintemplate.core.extensions.*
 import com.salesforce.mobilesyncexplorerkotlintemplate.core.salesforceobject.*
-import com.salesforce.mobilesyncexplorerkotlintemplate.core.suspendCleanResyncGhosts
-import kotlinx.coroutines.*
+import com.salesforce.mobilesyncexplorerkotlintemplate.core.suspendReSync
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.withContext
 import org.json.JSONObject
-import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
-import kotlin.coroutines.suspendCoroutine
 
 abstract class SObjectSyncableRepoBase<T : SObject>(
     account: UserAccount,
@@ -92,92 +92,17 @@ abstract class SObjectSyncableRepoBase<T : SObject>(
     //  records list? Is Sync Down + Refresh an atomic, uncancellable operation? Individual Sync
     //  operations cannot be cancelled by themselves...
     @Throws(
-        SyncDownException::class,
+        SyncException::class,
         RepoOperationException.SmartStoreOperationFailed::class,
     )
     override suspend fun syncDown() = withContext(ioDispatcher) {
-        syncMutex.withLockDebug {
-            doSyncDown()
-            try {
-                syncManager.suspendCleanResyncGhosts(syncName = syncDownName)
-            } catch (ex: CleanResyncGhostsException) {
-                throw SyncDownException.CleaningUpstreamRecordsFailed(cause = ex)
-            }
-        }
-
+        syncMutex.withLockDebug { syncManager.suspendReSync(SYNC_DOWN_BRIEFCASE) }
         withContext(NonCancellable) { refreshRecordsListFromSmartStore() }
     }
 
-    @Throws(SyncUpException::class)
+    @Throws(SyncException::class)
     override suspend fun syncUp() = withContext(ioDispatcher) {
-        syncMutex.withLockDebug { doSyncUp() }
-        Unit
-    }
-
-
-    // endregion
-    // region Private Sync Implementation
-
-
-    @Throws(SyncDownException::class)
-    private suspend fun doSyncDown(): SyncState = withContext(NonCancellable) {
-        suspendCoroutine { cont ->
-            val callback: (SyncState) -> Unit = {
-                when (it.status) {
-                    // terminal states
-                    SyncState.Status.DONE -> cont.resume(it)
-                    SyncState.Status.FAILED,
-                    SyncState.Status.STOPPED -> cont.resumeWithException(
-                        SyncDownException.FailedToFinish(
-                            message = "Sync Down operation failed with terminal Sync State = $it"
-                        )
-                    )
-
-                    SyncState.Status.NEW,
-                    SyncState.Status.RUNNING,
-                    null -> {
-                        /* no-op; suspending for terminal state */
-                    }
-                }
-            }
-
-            try {
-                syncManager.reSync(syncDownName, callback)
-            } catch (ex: Exception) {
-                cont.resumeWithException(SyncDownException.FailedToStart(cause = ex))
-            }
-        }
-    }
-
-    @Throws(SyncUpException::class)
-    private suspend fun doSyncUp(): SyncState = withContext(NonCancellable) {
-        suspendCoroutine { cont ->
-            val callback: (SyncState) -> Unit = {
-                when (it.status) {
-                    // terminal states
-                    SyncState.Status.DONE -> cont.resume(it)
-
-                    SyncState.Status.FAILED,
-                    SyncState.Status.STOPPED -> cont.resumeWithException(
-                        SyncUpException.FailedToFinish(
-                            message = "Sync Up operation failed with terminal Sync State = $it"
-                        )
-                    )
-
-                    SyncState.Status.NEW,
-                    SyncState.Status.RUNNING,
-                    null -> {
-                        /* no-op; suspending for terminal state */
-                    }
-                }
-            }
-
-            try {
-                syncManager.reSync(syncUpName, callback)
-            } catch (ex: Exception) {
-                cont.resumeWithException(SyncUpException.FailedToStart(cause = ex))
-            }
-        }
+        syncMutex.withLockDebug { syncManager.suspendReSync(SYNC_UP_CONTACTS) }
     }
 
 

@@ -24,26 +24,37 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-package com.salesforce.mobilesyncexplorerkotlintemplate.core.repos
+package com.salesforce.mobilesyncexplorerkotlintemplate.core.repos.views
 
-import com.salesforce.mobilesyncexplorerkotlintemplate.core.salesforceobject.SObject
-import com.salesforce.mobilesyncexplorerkotlintemplate.core.salesforceobject.SObjectRecord
-import kotlinx.coroutines.flow.Flow
+import com.salesforce.androidsdk.smartstore.store.QuerySpec
+import com.salesforce.androidsdk.smartstore.store.SmartStore
+import com.salesforce.androidsdk.smartstore.store.StoreUpdatesEventBus
+import com.salesforce.mobilesyncexplorerkotlintemplate.core.extensions.coerceToPositiveInt
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.withContext
 
-// TODO is there a better name that doesn't include the word "crud"?
-interface CrudRepo<T : SObject> {
-    suspend fun allView(pageSize: UInt, pageIndex: UInt): Flow<Map<String, SObjectRecord<T>>>
-    suspend fun exactIdView(id: String): Flow<SObjectRecord<T>>
+class AllRecordsView(
+    val soupName: String,
+    pageSize: UInt,
+    pageIndex: UInt,
+    private val store: SmartStore,
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
+) {
+    val pageSize: Int = pageSize.coerceToPositiveInt()
+    val pageIndex: Int = pageIndex.coerceToPositiveInt()
+    val query = QuerySpec.buildAllQuerySpec(soupName, null, null, this.pageSize)
 
-    @Throws(RepoOperationException::class)
-    suspend fun locallyUpdate(id: String, so: T): SObjectRecord<T>
+    private suspend fun runQuery() = withContext(ioDispatcher) {
+        // TODO how to handle exceptions?
+        store.query(querySpec = query, pageIndex = pageIndex)
+    }
 
-    @Throws(RepoOperationException::class)
-    suspend fun locallyCreate(so: T): SObjectRecord<T>
-
-    @Throws(RepoOperationException::class)
-    suspend fun locallyDelete(id: String): SObjectRecord<T>?
-
-    @Throws(RepoOperationException::class)
-    suspend fun locallyUndelete(id: String): SObjectRecord<T>
+    val items = StoreUpdatesEventBus.bus
+        .filter { it.soupNamesToUpdates[soupName] != null }
+        .map { runQuery() }
+        .onStart { emit(runQuery()) }
+        .flowOn(ioDispatcher)
+        .distinctUntilChanged()
 }

@@ -40,12 +40,12 @@ interface SObjectSyncableRepo<T : SObject> {
     val recordsById: Flow<Map<String, SObjectRecord<T>>>
 
     @Throws(
-        SyncDownException::class,
+        SyncException::class,
         RepoOperationException.SmartStoreOperationFailed::class,
     )
     suspend fun syncDown()
 
-    @Throws(SyncUpException::class)
+    @Throws(SyncException::class)
     suspend fun syncUp()
 
     @Throws(RepoOperationException::class)

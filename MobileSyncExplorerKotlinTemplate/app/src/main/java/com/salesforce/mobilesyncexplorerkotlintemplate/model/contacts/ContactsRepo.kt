@@ -5,7 +5,7 @@ import com.salesforce.mobilesyncexplorerkotlintemplate.model.accounts.AccountRec
 import kotlinx.coroutines.flow.Flow
 
 interface ContactsRepo : CrudRepo<ContactObject> {
-    fun relatedAccountsView(forIds: List<String>, pageSize: UInt): Flow<ContactWithRelatedAccount>
+    fun allWithRelatedAccountsView(pageSize: UInt, pageIndex: UInt): Flow<Map<String, ContactWithRelatedAccount>>
 
-    data class ContactWithRelatedAccount(val contact: ContactRecord, val account: AccountRecord)
+    data class ContactWithRelatedAccount(val contact: ContactRecord, val account: AccountRecord?)
 }

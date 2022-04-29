@@ -27,6 +27,8 @@
 package com.salesforce.mobilesyncexplorerkotlintemplate.core
 
 import com.salesforce.androidsdk.mobilesync.manager.SyncManager
+import com.salesforce.androidsdk.mobilesync.util.SyncState
+import com.salesforce.mobilesyncexplorerkotlintemplate.core.repos.SyncException
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
 import kotlin.coroutines.resume
@@ -70,4 +72,34 @@ sealed class CleanResyncGhostsException : Exception() {
         override val message: String?,
         override val cause: Throwable?
     ) : CleanResyncGhostsException()
+}
+
+@Throws(SyncException::class)
+suspend fun SyncManager.suspendReSync(syncName: String) = withContext(NonCancellable) {
+    suspendCoroutine<Unit> { cont ->
+        val callback: (SyncState) -> Unit = {
+            when (it.status) {
+                // terminal states
+                SyncState.Status.DONE -> cont.resume(Unit)
+                SyncState.Status.FAILED,
+                SyncState.Status.STOPPED -> cont.resumeWithException(
+                    SyncException.FailedToFinish(
+                        message = "Sync Down operation failed with terminal Sync State = $it"
+                    )
+                )
+
+                SyncState.Status.NEW,
+                SyncState.Status.RUNNING,
+                null -> {
+                    /* no-op; suspending for terminal state */
+                }
+            }
+        }
+
+        try {
+            reSync(syncName, callback)
+        } catch (ex: Exception) {
+            cont.resumeWithException(SyncException.FailedToStart(cause = ex))
+        }
+    }
 }
