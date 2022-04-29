@@ -1,12 +1,40 @@
 {
   "syncs": [
     {
-      "syncName": "syncDownContacts",
+      "syncName": "syncDownBriefcase",
       "syncType": "syncDown",
-      "soupName": "contacts",
+      "soupName": "not_applicable",
       "target": {
-        "type": "soql",
-        "query": "SELECT FirstName, LastName, Title, Department FROM Contact LIMIT 10000"
+        "type": "briefcase",
+        "infos": [
+          {
+            "sobjectType": "Contact",
+            "soupName": "contacts",
+            "fieldlist": [
+              "Department",
+              "FirstName",
+              "LastName",
+              "Title"
+            ]
+          },
+          {
+            "sobjectType": "Account",
+            "soupName": "accounts",
+            "fieldlist": [
+              "Description",
+              "Name"
+            ]
+          },
+          {
+            "sobjectType": "Opportunity",
+            "soupName": "opportunities",
+            "fieldlist": [
+              "CloseDate",
+              "ContactId",
+              "Description"
+            ]
+          }
+        ]
       },
       "options": {
         "mergeMode": "OVERWRITE"
@@ -31,6 +59,46 @@
           "LastName",
           "Title",
           "Department"
+        ],
+        "mergeMode": "LEAVE_IF_CHANGED"
+      }
+    },
+    {
+      "syncName": "syncUpAccounts",
+      "syncType": "syncUp",
+      "soupName": "accounts",
+      "target": {
+        "createFieldlist": [
+          "Description",
+          "Name"
+        ]
+      },
+      "options": {
+        "fieldlist": [
+          "Id",
+          "Description",
+          "Name"
+        ],
+        "mergeMode": "LEAVE_IF_CHANGED"
+      }
+    },
+    {
+      "syncName": "syncUpOpportunities",
+      "syncType": "syncUp",
+      "soupName": "opportunities",
+      "target": {
+        "createFieldlist": [
+          "CloseDate",
+          "ContactId",
+          "Description"
+        ]
+      },
+      "options": {
+        "fieldlist": [
+          "Id",
+          "CloseDate",
+          "ContactId",
+          "Description"
         ],
         "mergeMode": "LEAVE_IF_CHANGED"
       }

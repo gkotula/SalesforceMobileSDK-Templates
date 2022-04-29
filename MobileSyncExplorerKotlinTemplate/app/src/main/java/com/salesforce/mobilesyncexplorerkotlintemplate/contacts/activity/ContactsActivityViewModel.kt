@@ -40,6 +40,7 @@ import com.salesforce.mobilesyncexplorerkotlintemplate.core.repos.RepoOperationE
 import com.salesforce.mobilesyncexplorerkotlintemplate.core.repos.SyncDownException
 import com.salesforce.mobilesyncexplorerkotlintemplate.core.repos.SyncUpException
 import com.salesforce.mobilesyncexplorerkotlintemplate.core.ui.state.*
+import com.salesforce.mobilesyncexplorerkotlintemplate.model.accounts.AccountsRepo
 import com.salesforce.mobilesyncexplorerkotlintemplate.model.contacts.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.BufferOverflow
@@ -116,7 +117,10 @@ class DefaultContactsActivityViewModel : ViewModel(), ContactsActivityViewModel 
     private var hasInitialAccount = false
 
     @Volatile
-    private lateinit var contactsRepo: ContactsRepo
+    private lateinit var contactsRepo: ContactsRepoOld
+
+    @Volatile
+    private lateinit var accountsRepo: AccountsRepo
 
     @Volatile
     private var curUser: UserAccount? = null
@@ -132,7 +136,7 @@ class DefaultContactsActivityViewModel : ViewModel(), ContactsActivityViewModel 
                 repoCollectorJob?.cancelAndJoin()
 
                 curUser = newUser
-                contactsRepo = DefaultContactsRepo(account = newUser)
+                contactsRepo = DefaultContactsRepoOld(account = newUser)
 
                 detailsVm.reset()
                 listVm.reset()
@@ -419,6 +423,8 @@ class DefaultContactsActivityViewModel : ViewModel(), ContactsActivityViewModel 
         : ContactDetailsFieldChangeHandler,
         ContactDetailsClickHandler {
 
+        private var relatedAccountCollector: Job? = null
+
         private val initialState: ContactDetailsUiState
             get() = ContactDetailsUiState.NoContactSelected(doingInitialLoad = true)
 
@@ -431,6 +437,8 @@ class DefaultContactsActivityViewModel : ViewModel(), ContactsActivityViewModel 
 
         fun reset() {
             mutDetailsUiState.value = initialState
+            relatedAccountCollector?.cancel()
+            relatedAccountCollector = null
         }
 
         fun onRecordsEmitted() {
@@ -488,6 +496,10 @@ class DefaultContactsActivityViewModel : ViewModel(), ContactsActivityViewModel 
                         departmentField = ContactDetailsField.Department(
                             fieldValue = null,
                             onValueChange = ::onDepartmentChange
+                        ),
+                        accountField = ContactDetailsField.AccountName(
+                            fieldValue = null,
+                            onClick = ::onAccountClick
                         ),
 
                         uiSyncState = SObjectUiSyncState.NotSaved,
@@ -605,6 +617,10 @@ class DefaultContactsActivityViewModel : ViewModel(), ContactsActivityViewModel 
             )
         }
 
+        fun onAccountClick() = safeHandleUiEvent {
+            TODO("onAccountClick()")
+        }
+
         @Throws(ContactValidationException::class)
         private fun ContactDetailsUiState.ViewingContactDetails.toSObjectOrThrow() = ContactObject(
             accountId = null, // TODO enable details view to re-parent
@@ -628,6 +644,7 @@ class DefaultContactsActivityViewModel : ViewModel(), ContactsActivityViewModel 
                 uiSyncState = uiSyncState,
                 isEditingEnabled = isEditingEnabled,
                 shouldScrollToErrorField = shouldScrollToErrorField,
+                accountField = TODO("ContactRecord.buildViewingContactUiState() - accountField init")
             )
         }
 

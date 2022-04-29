@@ -96,4 +96,14 @@ sealed interface ContactDetailsField : FieldUiState {
         override val helperRes: Int? = null
         override val placeholderRes: Int = R.string.label_contact_department
     }
+
+    data class AccountName(
+        override val fieldValue: String?,
+        val onClick: () -> Unit
+    ) : ContactDetailsField {
+        override val helperRes: Int? = null
+        override val isInErrorState: Boolean = false
+        override val labelRes: Int = R.string.label_account
+        override val placeholderRes: Int = R.string.label_account
+    }
 }

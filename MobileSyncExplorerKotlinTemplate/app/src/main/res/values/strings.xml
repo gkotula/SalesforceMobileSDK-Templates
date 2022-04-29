@@ -21,6 +21,8 @@
     <string name="cta_sync">Sync</string>
     <string name="cta_undelete">Undelete</string>
 
+    <string name="label_account">Account</string>
+
     <string name="label_contacts">Contacts</string>
     <string name="label_contact_details">Contact Details</string>
     <string name="label_contact_department">Department</string>

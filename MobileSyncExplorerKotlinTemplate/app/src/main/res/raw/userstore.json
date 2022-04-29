@@ -5,6 +5,7 @@
       "indexes": [
         { "path": "Id", "type": "string" },
         { "path": "AccountId", "type": "string" },
+        { "path": "Department", "type": "string" },
         { "path": "FirstName", "type": "string" },
         { "path": "LastName", "type": "string" },
         { "path": "Title", "type": "string" },
@@ -32,9 +33,9 @@
       "soupName": "opportunities",
       "indexes": [
         { "path": "Id", "type": "string" },
+        { "path": "CloseDate", "type": "string" },
         { "path": "ContactId", "type": "string" },
         { "path": "Description", "type": "full_text" },
-        { "path": "CloseDate", "type": "string" },
         { "path": "__local__", "type": "string" },
         { "path": "__locally_created__", "type": "string" },
         { "path": "__locally_deleted__", "type": "string" },

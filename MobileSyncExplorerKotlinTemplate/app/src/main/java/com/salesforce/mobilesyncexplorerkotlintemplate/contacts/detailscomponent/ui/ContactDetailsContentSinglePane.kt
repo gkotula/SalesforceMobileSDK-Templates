@@ -265,6 +265,10 @@ fun ContactRecord.toPreviewViewingContactDetails(
         fieldValue = sObject.department,
         onValueChange = {}
     ),
+    accountField = ContactDetailsField.AccountName(
+        fieldValue = "Account ${sObject.accountId}",
+        onClick = {}
+    ),
     uiSyncState = uiSyncState,
     isEditingEnabled = isEditingEnabled,
     shouldScrollToErrorField = shouldScrollToErrorField,

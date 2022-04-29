@@ -217,7 +217,7 @@ abstract class SObjectSyncableRepoBase<T : SObject>(
             }
 
             val result = try {
-                store.upsert(soupName, retrievedElt)
+                store.upsert(soupName, retrievedElt)!!
             } catch (ex: Exception) {
                 throw RepoOperationException.SmartStoreOperationFailed(
                     message = "Failed to update the object in SmartStore.",
@@ -242,7 +242,7 @@ abstract class SObjectSyncableRepoBase<T : SObject>(
                         .applyObjProperties()
                 }
 
-                store.upsert(soupName, elt)
+                store.upsert(soupName, elt)!!
             } catch (ex: Exception) {
                 throw RepoOperationException.SmartStoreOperationFailed(
                     message = "Failed to create the object in SmartStore.",
@@ -352,7 +352,7 @@ abstract class SObjectSyncableRepoBase<T : SObject>(
             try {
                 val result = store.update(soupName, retrieved.elt, retrieved.soupId)
                 store.setTransactionSuccessful()
-                result
+                result!!
             } catch (ex: Exception) {
                 throw RepoOperationException.SmartStoreOperationFailed(
                     message = "Locally-undelete operation failed. Could not save the updated object in SmartStore.",

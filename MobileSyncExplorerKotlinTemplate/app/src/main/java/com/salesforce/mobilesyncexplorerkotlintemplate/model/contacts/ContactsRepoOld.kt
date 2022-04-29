@@ -24,49 +24,37 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-package com.salesforce.mobilesyncexplorerkotlintemplate.contacts.detailscomponent
+@file:JvmName("ContactsRepoKt")
 
-import com.salesforce.mobilesyncexplorerkotlintemplate.core.ui.state.SObjectUiSyncState
-import com.salesforce.mobilesyncexplorerkotlintemplate.model.contacts.ContactObject
+package com.salesforce.mobilesyncexplorerkotlintemplate.model.contacts
 
-sealed interface ContactDetailsUiState {
-    val doingInitialLoad: Boolean
-    val recordId: String?
+import com.salesforce.androidsdk.accounts.UserAccount
+import com.salesforce.mobilesyncexplorerkotlintemplate.core.repos.SObjectSyncableRepo
+import com.salesforce.mobilesyncexplorerkotlintemplate.core.repos.SObjectSyncableRepoBase
+import com.salesforce.mobilesyncexplorerkotlintemplate.core.salesforceobject.SObjectDeserializer
+import kotlinx.coroutines.*
 
-    data class ViewingContactDetails(
-        override val recordId: String?,
-        val firstNameField: ContactDetailsField.FirstName,
-        val lastNameField: ContactDetailsField.LastName,
-        val titleField: ContactDetailsField.Title,
-        val departmentField: ContactDetailsField.Department,
-        val accountField: ContactDetailsField.AccountName,
+/**
+ * The default implementation of the [ContactsRepoOld].
+ */
+class DefaultContactsRepoOld(
+    account: UserAccount,
+    ioDispatcher: CoroutineDispatcher = Dispatchers.IO
+) : SObjectSyncableRepoBase<ContactObject>(
+    account = account,
+    ioDispatcher = ioDispatcher
+) {
 
-        val uiSyncState: SObjectUiSyncState,
-        val isEditingEnabled: Boolean,
-        val shouldScrollToErrorField: Boolean,
+    override val deserializer: SObjectDeserializer<ContactObject> = ContactObject.Companion
+    override val soupName: String = CONTACTS_SOUP_NAME
+    override val syncDownName: String = SYNC_DOWN_CONTACTS
+    override val syncUpName: String = SYNC_UP_CONTACTS
 
-        override val doingInitialLoad: Boolean = false
-    ) : ContactDetailsUiState {
-        val fullName = ContactObject.formatFullName(
-            firstName = firstNameField.fieldValue,
-            lastName = lastNameField.fieldValue
-        )
-    }
-
-    data class NoContactSelected(
-        override val doingInitialLoad: Boolean = false
-    ) : ContactDetailsUiState {
-        override val recordId: String? = null
+    companion object {
+        const val CONTACTS_SOUP_NAME = "contacts"
+        const val SYNC_DOWN_CONTACTS = "syncDownContacts"
+        const val SYNC_UP_CONTACTS = "syncUpContacts"
     }
 }
 
-fun ContactDetailsUiState.copy(
-    doingInitialLoad: Boolean = this.doingInitialLoad,
-) = when (this) {
-    is ContactDetailsUiState.NoContactSelected -> this.copy(
-        doingInitialLoad = doingInitialLoad,
-    )
-    is ContactDetailsUiState.ViewingContactDetails -> this.copy(
-        doingInitialLoad = doingInitialLoad,
-    )
-}
+typealias ContactsRepoOld = SObjectSyncableRepo<ContactObject>

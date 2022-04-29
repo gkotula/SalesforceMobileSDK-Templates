@@ -30,6 +30,8 @@ import android.app.Application
 import android.content.Context
 import com.salesforce.androidsdk.mobilesync.app.MobileSyncSDKManager
 import com.salesforce.mobilesyncexplorerkotlintemplate.contacts.activity.ContactsActivity
+import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.cancel
 
 class MobileSyncExplorerKotlinTemplateApp : Application() {
     override fun onCreate() {
@@ -38,10 +40,17 @@ class MobileSyncExplorerKotlinTemplateApp : Application() {
         MobileSyncSDKManager.initNative(this, ContactsActivity::class.java)
     }
 
+    override fun onTerminate() {
+        appScope.cancel()
+        super.onTerminate()
+    }
+
     companion object {
         lateinit var appContext: Context
             @Synchronized get
             @Synchronized private set
+
+        val appScope by lazy { MainScope() }
     }
 }
 
